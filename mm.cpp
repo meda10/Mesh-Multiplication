@@ -79,23 +79,27 @@ int main(int argc, char *argv[]) {
             exit(1);
         }
 
-        MPI_Bcast(&matrix_rows_1, 1, MPI_INT, TAG, MPI_COMM_WORLD);
-        MPI_Bcast(&matrix_columns_1, 1, MPI_INT, TAG, MPI_COMM_WORLD);
-        MPI_Bcast(&matrix_columns_2, 1, MPI_INT, TAG, MPI_COMM_WORLD);
-
+        MPI_Bcast(&matrix_rows_1, 1, MPI_INT, 0, MPI_COMM_WORLD);
+        MPI_Bcast(&matrix_columns_1, 1, MPI_INT, 0, MPI_COMM_WORLD);
+        MPI_Bcast(&matrix_columns_2, 1, MPI_INT, 0, MPI_COMM_WORLD);
+//        std::cout << my_id << " ROOT " << matrix_rows_1 << " " << matrix_columns_1 << " " << matrix_columns_2 << std::endl;
 
         //Sends
         for(int j = 0; j < matrix_columns_1; j++){
             for(int i = 0; i < matrix_rows_1; i++){
-//                std::cout << matrix_1[i][j] << ' ';
-                MPI_Send(&matrix_1[i][j], 1, MPI_INT, j * matrix_columns_2, TAG, MPI_COMM_WORLD);
+                if (i * matrix_columns_2 != 0){
+//                    std::cout << "SEND " << matrix_1[i][j] << " Xfrom " << 0 << " sending to " << i * matrix_columns_2 << std::endl;
+                    MPI_Send(&matrix_1[i][j], 1, MPI_INT, i * matrix_columns_2, TAG, MPI_COMM_WORLD);
+                }
             }
         }
 
         for(int i = 0; i < matrix_rows_2; i++){
             for(int j = 0; j < matrix_columns_2; j++){
-//                std::cout << matrix_2[i][j] << ' ';
-                MPI_Send(&matrix_2[i][j], 1, MPI_INT, j, TAG, MPI_COMM_WORLD);
+                if (j != 0){
+//                    std::cout << "SEND " << matrix_2[i][j] << " Zfrom " << 0 << " sending to " << j << std::endl;
+                    MPI_Send(&matrix_2[i][j], 1, MPI_INT, j, TAG, MPI_COMM_WORLD);
+                }
             }
         }
 
@@ -104,40 +108,40 @@ int main(int argc, char *argv[]) {
             int a = matrix_1[0][matrix_columns_1 - 1 - i];
             int b = matrix_2[matrix_rows_2 - 1 - i][0];
             sum += a * b;
+//            std::cout << a << "*" << b  << "=" << sum << std::endl;
 
             // Send current values from left and top vector to right and bottom processes.
             if(matrix_columns_2 > 1) {
-                std::cout << "SEND " << b << " from " << 0 << " sending to " << 1 << std::endl;
+//                std::cout << "SEND " << b << " from " << 0 << " sending to " << 1 << std::endl;
                 MPI_Send(&a, 1, MPI_INT, 1, TAG, MPI_COMM_WORLD); // A -> RIGHT
             }
             if(matrix_rows_1 > 1){
-                std::cout << "SEND " << b << " from " << 0 << " sending to " << matrix_columns_2 << std::endl;
+//                std::cout << "SEND " << b << " from " << 0 << " sending to " << matrix_columns_2 << std::endl;
                 MPI_Send(&b, 1, MPI_INT, matrix_columns_2, TAG, MPI_COMM_WORLD); // B  -> DOWN
             }
         }
 //
-        // Read resulting values from all processes and print out
+//        // Read resulting values from all processes and print out
         std::cout << matrix_rows_1 << ":" << matrix_columns_2 << std::endl;
         std::cout << sum;
-        for(int proci = 1; proci < number_of_processors; ++proci) {
+        for(int proci = 1; proci < number_of_processors - 1; ++proci) {
             int tmp;
             MPI_Recv(&tmp, 1, MPI_INT, proci, TAG, MPI_COMM_WORLD, &stat);
             std::cout << ((proci % matrix_columns_2 == 0) ? "\n" : " ") << tmp;
         }
         std::cout << std::endl;
-
     }
 
     if(my_id > 0) {
-        MPI_Recv(&matrix_rows_1, 1, MPI_INT, 0, TAG, MPI_COMM_WORLD, &stat);
-        MPI_Recv(&matrix_columns_1, 1, MPI_INT, 0, TAG, MPI_COMM_WORLD, &stat);
-        MPI_Recv(&matrix_columns_2, 1, MPI_INT, 0, TAG, MPI_COMM_WORLD, &stat);
+        MPI_Bcast(&matrix_rows_1, 1, MPI_INT, 0, MPI_COMM_WORLD);
+        MPI_Bcast(&matrix_columns_1, 1, MPI_INT, 0, MPI_COMM_WORLD);
+        MPI_Bcast(&matrix_columns_2, 1, MPI_INT, 0, MPI_COMM_WORLD);
 
         // Get IDs of processor neighbours
-        int top = my_id - matrix_columns_2 < 0 ? NO_NEIGHBOUR : my_id - matrix_columns_2;
-        int bottom = my_id + matrix_columns_2 > number_of_processors ? NO_NEIGHBOUR : my_id + matrix_columns_2;
-        int left = my_id % matrix_columns_2 == 0 ? NO_NEIGHBOUR : my_id - 1;
-        int right = (my_id + 1 ) % matrix_columns_2 == 0 ? NO_NEIGHBOUR : my_id + 1;
+        int left = my_id % matrix_columns_2  == 0 ? 0 : my_id - 1;
+        int right = (my_id + 1) % matrix_columns_2 == 0 ? NO_NEIGHBOUR : my_id + 1;
+        int top = my_id - matrix_columns_2 < 0  ? 0 : my_id - matrix_columns_2;
+        int bottom = my_id + matrix_columns_2 > number_of_processors - 1 ? NO_NEIGHBOUR :my_id + matrix_columns_2;
 
         int a, b;
         int sum = 0;
@@ -145,17 +149,17 @@ int main(int argc, char *argv[]) {
             MPI_Recv(&a, 1, MPI_INT, left, TAG, MPI_COMM_WORLD, &stat);
             MPI_Recv(&b,  1, MPI_INT, top, TAG, MPI_COMM_WORLD, &stat);
 
-            std::cout << "RECV " << a << " from " << left << " sending to " << right << std::endl;
-            std::cout << "RECV " << b << " from " << top << " sending to " << bottom << std::endl;
-
-            sum += a*b;
+            sum += a * b;
             if(right != NO_NEIGHBOUR){
+//                std::cout << my_id << " RECV " << a << " LRfrom: " << left << " to: " << right << std::endl;
                 MPI_Send(&a, 1, MPI_INT, right, TAG, MPI_COMM_WORLD);
             }
             if(bottom != NO_NEIGHBOUR){
+//                std::cout << my_id << " RECV " << b << " TBfrom: " << top << " to: " << bottom << std::endl;
                 MPI_Send(&b,  1, MPI_INT, bottom, TAG, MPI_COMM_WORLD);
             }
         }
+//        std::cout << my_id << " SUM " << sum << std::endl;
         MPI_Send(&sum, 1, MPI_INT, 0, TAG, MPI_COMM_WORLD);
     }
 
