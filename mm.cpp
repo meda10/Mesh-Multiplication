@@ -1,12 +1,7 @@
 #include <mpi.h>
-#include <iostream>
 #include <fstream>
 #include <sstream>
 #include <vector>
-#include <iterator>
-#include <string>
-#include <cassert>
-#include <algorithm>
 
 const char * FILENAME_MATRIX_1 = "mat1";
 const char * FILENAME_MATRIX_2 = "mat2";
@@ -55,11 +50,8 @@ int main(int argc, char *argv[]) {
     MPI_Init(&argc,&argv);
     MPI_Comm_size(MPI_COMM_WORLD,&number_of_processors);
     MPI_Comm_rank(MPI_COMM_WORLD,&my_id);
-
     MPI_Status stat;
-
     int matrix_rows_1, matrix_columns_1, matrix_rows_2, matrix_columns_2;
-//           M                N               N                K
 
     if(my_id == 0) {
         std::vector<std::vector<int>> matrix_1 = read_input(FILENAME_MATRIX_1, &matrix_rows_1);
@@ -108,14 +100,14 @@ int main(int argc, char *argv[]) {
         std::cout << matrix_rows_1 << ":" << matrix_columns_2 << std::endl;
         std::cout << sum;
         for(int p = 1; p < number_of_processors; ++p) {
-            int tmp;
-            MPI_Recv(&tmp, 1, MPI_INT, p, TAG, MPI_COMM_WORLD, &stat);
+            int num;
+            MPI_Recv(&num, 1, MPI_INT, p, TAG, MPI_COMM_WORLD, &stat);
             if(p % matrix_columns_2 == 0){
                 std::cout << std::endl;
             } else{
                 std::cout << " ";
             }
-            std::cout << tmp;
+            std::cout << num;
         }
         std::cout << std::endl;
     }
