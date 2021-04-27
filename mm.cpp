@@ -1,4 +1,5 @@
 #include <mpi.h>
+#include <iostream>
 #include <fstream>
 #include <sstream>
 #include <vector>
@@ -54,34 +55,39 @@ int main(int argc, char *argv[]) {
     int matrix_rows_1, matrix_columns_1, matrix_rows_2, matrix_columns_2;
 
     if(my_id == 0) {
+        //Lead matrix from file
         std::vector<std::vector<int>> matrix_1 = read_input(FILENAME_MATRIX_1, &matrix_rows_1);
         std::vector<std::vector<int>> matrix_2 = read_input(FILENAME_MATRIX_2, &matrix_columns_2);
 
         matrix_columns_1 = matrix_1[0].size();
         matrix_rows_2 = matrix_2.size();
 
+        //Check matrix dimensions
         if(matrix_columns_1 != matrix_rows_2){
             MPI_Abort(MPI_COMM_WORLD, 1);
             exit(1);
         }
 
+        //Send matrix dimensions
         MPI_Bcast(&matrix_rows_1, 1, MPI_INT, 0, MPI_COMM_WORLD);
         MPI_Bcast(&matrix_columns_1, 1, MPI_INT, 0, MPI_COMM_WORLD);
         MPI_Bcast(&matrix_columns_2, 1, MPI_INT, 0, MPI_COMM_WORLD);
 
-        //Sends
+        //Sends matrix 1 to first column of processors
         for(int j = 0; j < matrix_columns_1; j++){
             for(int i = 0; i < matrix_rows_1; i++){
                 MPI_Send(&matrix_1[i][j], 1, MPI_INT, i * matrix_columns_2, TAG_MATRIX_1, MPI_COMM_WORLD);
             }
         }
 
+        //Sends matrix 2 to first row of processors
         for(int i = 0; i < matrix_rows_2; i++){
             for(int j = 0; j < matrix_columns_2; j++){
                 MPI_Send(&matrix_2[i][j], 1, MPI_INT, j, TAG_MATRIX_2, MPI_COMM_WORLD);
             }
         }
 
+        //Mesh multiplication
         int sum = 0;
         for(int i = 0; i < matrix_columns_1; i++){
             int a, b;
@@ -97,6 +103,7 @@ int main(int argc, char *argv[]) {
             }
         }
 
+        //Receive SUM from all processors and print to STDOUT
         std::cout << matrix_rows_1 << ":" << matrix_columns_2 << std::endl;
         std::cout << sum;
         for(int p = 1; p < number_of_processors; ++p) {
@@ -113,6 +120,7 @@ int main(int argc, char *argv[]) {
     }
 
     if(my_id > 0) {
+        //Receive matrix dimensions
         MPI_Bcast(&matrix_rows_1, 1, MPI_INT, 0, MPI_COMM_WORLD);
         MPI_Bcast(&matrix_columns_1, 1, MPI_INT, 0, MPI_COMM_WORLD);
         MPI_Bcast(&matrix_columns_2, 1, MPI_INT, 0, MPI_COMM_WORLD);
@@ -123,6 +131,7 @@ int main(int argc, char *argv[]) {
         int top = my_id - matrix_columns_2 < 0  ? 0 : my_id - matrix_columns_2;
         int bottom = my_id + matrix_columns_2 > number_of_processors - 1 ? NO_NEIGHBOUR :my_id + matrix_columns_2;
 
+        //Mesh multiplication
         int sum = 0;
         for(int i = 0; i < matrix_columns_1; ++i) {
             int a, b;
