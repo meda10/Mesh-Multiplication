@@ -146,6 +146,7 @@ int main(int argc, char *argv[]) {
                 MPI_Send(&b,  1, MPI_INT, bottom, TAG_MATRIX_2, MPI_COMM_WORLD);
             }
         }
+        //Send data to master
         MPI_Send(&sum, 1, MPI_INT, 0, TAG, MPI_COMM_WORLD);
     }
 
