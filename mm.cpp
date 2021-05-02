@@ -9,7 +9,7 @@ const char * FILENAME_MATRIX_2 = "mat2";
 #define TAG_MATRIX_1 1
 #define TAG_MATRIX_2 2
 #define TAG 2
-#define NO_NEIGHBOUR -1
+#define NO_NEIGHBOUR (-1)
 
 
 std::vector<std::vector<int>> read_input(const char* filename, int *size){
@@ -21,7 +21,6 @@ std::vector<std::vector<int>> read_input(const char* filename, int *size){
     file.open(filename, std::ios::in);
     if (!file.is_open()){
         MPI_Abort(MPI_COMM_WORLD, 1);
-        exit(1);
     }
 
     std::getline(file, first_line);
@@ -55,17 +54,16 @@ int main(int argc, char *argv[]) {
     int matrix_rows_1, matrix_columns_1, matrix_rows_2, matrix_columns_2;
 
     if(my_id == 0) {
-        //Lead matrix from file
+        //Load matrix from file
         std::vector<std::vector<int>> matrix_1 = read_input(FILENAME_MATRIX_1, &matrix_rows_1);
         std::vector<std::vector<int>> matrix_2 = read_input(FILENAME_MATRIX_2, &matrix_columns_2);
 
-        matrix_columns_1 = matrix_1[0].size();
-        matrix_rows_2 = matrix_2.size();
+        matrix_columns_1 = int (matrix_1[0].size());
+        matrix_rows_2 = int (matrix_2.size());
 
         //Check matrix dimensions
         if(matrix_columns_1 != matrix_rows_2){
             MPI_Abort(MPI_COMM_WORLD, 1);
-            exit(1);
         }
 
         //Send matrix dimensions
@@ -90,13 +88,15 @@ int main(int argc, char *argv[]) {
         //Mesh multiplication
         int sum = 0;
         for(int i = 0; i < matrix_columns_1; i++){
+            //Receive A, B
             int a, b;
             MPI_Recv(&a,1, MPI_INT, 0, TAG_MATRIX_1, MPI_COMM_WORLD, &stat);
             MPI_Recv(&b,1, MPI_INT, 0, TAG_MATRIX_2, MPI_COMM_WORLD, &stat);
+            //Compute Sum
             sum += a * b;
-
+            //Send A, B to right and bottom neighbours (if exists)
             if(matrix_columns_2 > 1) {
-                MPI_Send(&a, 1, MPI_INT, 1, TAG_MATRIX_1, MPI_COMM_WORLD); // A -> RIGHT
+                MPI_Send(&a, 1, MPI_INT, 1, TAG_MATRIX_1, MPI_COMM_WORLD);
             }
             if(matrix_rows_1 > 1){
                 MPI_Send(&b, 1, MPI_INT, matrix_columns_2, TAG_MATRIX_2, MPI_COMM_WORLD);
@@ -134,11 +134,13 @@ int main(int argc, char *argv[]) {
         //Mesh multiplication
         int sum = 0;
         for(int i = 0; i < matrix_columns_1; ++i) {
+            //Receive A, B from left and top neighbours
             int a, b;
             MPI_Recv(&a,1, MPI_INT, left, TAG_MATRIX_1, MPI_COMM_WORLD, &stat);
             MPI_Recv(&b,1, MPI_INT, top, TAG_MATRIX_2, MPI_COMM_WORLD, &stat);
-
+            //Compute Sum
             sum += a * b;
+            //Send A, B to right and bottom neighbours (if exists)
             if(right != NO_NEIGHBOUR){
                 MPI_Send(&a, 1, MPI_INT, right, TAG_MATRIX_1, MPI_COMM_WORLD);
             }
