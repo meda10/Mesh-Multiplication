@@ -129,7 +129,7 @@ int main(int argc, char *argv[]) {
         int left = my_id % matrix_columns_2  == 0 ? 0 : my_id - 1;
         int right = (my_id + 1) % matrix_columns_2 == 0 ? NO_NEIGHBOUR : my_id + 1;
         int top = my_id - matrix_columns_2 < 0  ? 0 : my_id - matrix_columns_2;
-        int bottom = my_id + matrix_columns_2 > number_of_processors - 1 ? NO_NEIGHBOUR :my_id + matrix_columns_2;
+        int bottom = my_id + matrix_columns_2 > number_of_processors - 1 ? NO_NEIGHBOUR : my_id + matrix_columns_2;
 
         //Mesh multiplication
         int sum = 0;
